@@ -19,9 +19,9 @@ const (
 // googleBreaker is a netflixBreaker pattern from google.
 // see Client-Side Throttling section in https://landing.google.com/sre/sre-book/chapters/handling-overload/
 type googleBreaker struct {
-	k     float64
-	stat  *collection.RollingWindow
-	proba *mathx.Proba
+	k     float64                   // 倍值 默认 1.5
+	stat  *collection.RollingWindow //滑动时间窗口，用来怼请求失败和成功计数
+	proba *mathx.Proba              // 动态概率
 }
 
 func newGoogleBreaker() *googleBreaker {
@@ -34,15 +34,18 @@ func newGoogleBreaker() *googleBreaker {
 	}
 }
 
+// max(0, requests - (K * accepts)/(requests + 1)) google Sre 过载保护算法
 func (b *googleBreaker) accept() error {
 	accepts, total := b.history()
 	weightedAccepts := b.k * float64(accepts)
 	// https://landing.google.com/sre/sre-book/chapters/handling-overload/#eq2101
+	//计算丢弃请求概率
 	dropRatio := math.Max(0, (float64(total-protection)-weightedAccepts)/float64(total+1))
 	if dropRatio <= 0 {
 		return nil
 	}
 
+	// 动态判断是否触发熔断
 	if b.proba.TrueOnProba(dropRatio) {
 		return ErrServiceUnavailable
 	}
@@ -60,7 +63,9 @@ func (b *googleBreaker) allow() (internalPromise, error) {
 	}, nil
 }
 
+// 调用doReq办法，在这个办法中首先通过accept 校验是否触发熔断
 func (b *googleBreaker) doReq(req func() error, fallback func(err error) error, acceptable Acceptable) error {
+	// 判断是否触发熔断
 	if err := b.accept(); err != nil {
 		if fallback != nil {
 			return fallback(err)
@@ -76,10 +81,13 @@ func (b *googleBreaker) doReq(req func() error, fallback func(err error) error, 
 		}
 	}()
 
+	// 执行调用函数
 	err := req()
+	//正常请求计算
 	if acceptable(err) {
 		b.markSuccess()
 	} else {
+		//异常请求计算
 		b.markFailure()
 	}
 
