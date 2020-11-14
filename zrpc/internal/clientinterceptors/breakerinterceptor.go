@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 )
 
+//熔断器引入
 func BreakerInterceptor(ctx context.Context, method string, req, reply interface{},
 	cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	breakerName := path.Join(cc.Target(), method)
