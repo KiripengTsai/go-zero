@@ -21,6 +21,7 @@ const (
 
 var spanSep = string([]byte{spanSepRune})
 
+// 链路中的一个操作，存储时间和某些信息
 type Span struct {
 	ctx           spanContext
 	serviceName   string

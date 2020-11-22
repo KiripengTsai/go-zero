@@ -8,6 +8,8 @@ import (
 
 var emptyNoopSpan = noopSpan{}
 
+//实现了空的 tracer 实现
+
 type noopSpan struct{}
 
 func (s noopSpan) Finish() {

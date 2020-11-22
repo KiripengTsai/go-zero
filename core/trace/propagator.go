@@ -16,6 +16,7 @@ var (
 	emptyGrpcPropagator grpcPropagator
 )
 
+// trace 传播下游的操作「抽取，注入」
 type (
 	Propagator interface {
 		Extract(carrier interface{}) (Carrier, error)
